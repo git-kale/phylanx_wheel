@@ -1,0 +1,13 @@
+diff --git a/python/CMakeLists.txt b/python/CMakeLists.txt
+index d1d29ac4..a1603d1f 100644
+--- a/python/CMakeLists.txt
++++ b/python/CMakeLists.txt
+@@ -81,7 +81,7 @@ if (PYTHON_EXECUTABLE)
+ 
+   # for the install step it does not matter which setup.py we use
+   install(CODE
+-    "execute_process(COMMAND ${PYTHON_EXECUTABLE} ${SETUP_PY}_${__install_config}.py install --user)")
++    "execute_process(COMMAND ${PYTHON_EXECUTABLE} ${SETUP_PY}_${__install_config}.py bdist_wheel)")
+ 
+ endif()
+
