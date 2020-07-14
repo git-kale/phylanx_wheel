@@ -12,6 +12,7 @@ Find the project website [here](http://phylanx.stellar-group.org/). This reposit
 git lfs clone https://github.com/git-kale/phylanx_wheel.git
 cd phylanx_wheel
 pip3 install phylanx-0.0.1-cp37-cp37m-linux_x86_64.whl
+export PHYLANX_PLUGINS_PATH=/usr/local/lib/python3.7/phylanx-libs/phylanx
 ```
 ### Testing on Docker 
 Note that the wheel file is stored on git lfs as github doesnt allow files larger than 64MB in a repository. Docker pulls the wheel from the lfs and runs it on phylanx. The inside the repository run:
@@ -46,10 +47,12 @@ git clone https://github.com/STEllAR-GROUP/phylanx.git /phylanx
 cd /phylanx
 git apply <patch-location>
 ```
+*Note*: Install wheel package if it is not installed [pip3 install wheel]
+
 4. Build Phylanx
 ```
 mkdir build && cd build
-cmake -DCMAKE_BUILD_TYPE=Debug -DHPX_DIR=/usr/local/lib/cmake/HPX/ ..
+cmake -DCMAKE_BUILD_TYPE=Debug -DHPX_DIR=/usr/local/lib/cmake/HPX/ -Dblaze_DIR=/usr/local/share/blaze/cmake/ -Dpybind11_DIR=/usr/local/share/cmake/pybind11/ ..
 make -j $(nproc)
 make install -j $(nproc)
 ```
@@ -81,7 +84,7 @@ wheel unpack <wheel-file>
        |_________________________________|
        
     ```
-7. Inside the unpacked wheel create a folder /phylanx-libs that will contain all the binary dependencies of the project. Copy all the dependencies within the package.
+7. Inside the unpacked wheel create a folder /phylanx-libs that will contain all the binary dependencies of the project. Copy all the dependencies within the package. (See Packaging for more info)
 ```
 .
 |-- phylanx
@@ -97,17 +100,38 @@ wheel unpack <wheel-file>
     |-- hpx
     `-- phylanx
 ```
-8. Running a simple unix check shows that the rpaths of the libraries are not correct. The ouptut shows which libraries was linker unable to find due to incorrect rpath.
+8.  Phylanx contains symlinks and the binary in the package. Some of the dependencies are on symlinks rather than actual libraries eg. *_phylanxd.cpython-37m-x86_64-linux-gnu.so* has dependency on *_libhpx_phylax(d).so.1*. Therefore we need to rename(as symlink) and copy the actual binaries to *phylanx-libs*. Repeat this step for all the dependencies
+
+eg. For a dependecy libfoo.so.0 which links to /path/to/libbfoo.so.0.0.1 and needs to be put in location extras.
+````
+readlink -f libfoo.so.0        // Ouputs : /path/to/libbfoo.so.0.0.1
+cp /path/to/libbfoo.so.0.0.1 phylanx-libs/extras
+mv libbfoo.so.0.0.1 libbfoo.so.0
+````
+
+9. Running a simple unix check shows that the rpaths of the libraries are not correct. The ouptut shows which libraries was linker unable to find due to incorrect rpath.
 ```
 find <unpacked-wheel> -name "*.so*" | xargs -I{} ldd {} | grep "not found"
 ```
 
-9. Use patchelf to change the rpath of shared libraries as explained below. The correctness of the rpaths can be verified similar to Step 8. Now pack the wheel file again.
+10. Use patchelf to change the rpath of shared libraries as explained below. The correctness of the rpaths can be verified similar to Step 8. 
+
+11. Now pack the wheel file again. 
 ```
 wheel pack <unpacked-wheel>
 ```
 
-10. This wheel can be tested as per Test Instructions.
+12. This wheel can be tested as per Test Instructions.
+
+### Packaging
+
+A wheel is basically a zip file with a different extension name.
+The wheel uses zipfile library to compress the package into the wheel. The zipfile has an open issue about handling symlinks [https://bugs.python.org/issue27318].
+So when a wheel [a zip file] is installed it basically unpacks libraries into their install location. While doing so the symlinks are not preserved they are replaced by their respective libs.
+
+Phylanx contains various symlinks and the the binary in package i.e. *_phylanxd.cpython-37m-x86_64-linux-gnu.so* has dependency on symlink rather than actual binary. Therefore we need to rename(as symlink) and copy the actual binaries to *phylanx-libs*.
+
+For finding plugins PHYLANX_PLUGIN_PATH needs to be set to *phylanx-libs/phylanx*
 
 ### Working with patchelf Tool
 
@@ -140,9 +164,28 @@ patchelf --set-rpath '$ORIGIN/a:$ORIGIN/b' libfoo.so
 ### Debugging the package
 
 There are 2 parts of the library: Python & Bianary. Python errors can be found and recitified using the error message on execution of tests. If error is while using the binary part, A segmaentation fault is occured.
-gdb 7 extended the support to debug cpython packages. Vanilla gdb can hence be used to debug the segfaults during execution.
+gdb 7 extended the support to debug cpython packages. Vanilla gdb can hence be used to debug the segfaults during execution. 
 ```
 gdb python3
 run <test.py>
 backtrace
 ```
+*Note:* Install gdb for debugging
+
+### Testing
+
+The testfiles are in *testing/python* folder.
+As of now 93/102 tests pass.
+ 
+Failing Tests in test-suite
+````
+805_lazy_variable.py
+866_dynamic_dtype.py
+886_notnone.py
+912_zip.py
+962_broadcast_logical_operations.py
+exception_swallowed_369.py
+parallel.py
+test_nodes.py
+test_symbol_table.py
+````
