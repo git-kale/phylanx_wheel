@@ -20,6 +20,12 @@ Note that the wheel file is stored on git lfs as github doesnt allow files large
 cd testing/
 docker build -t <build_name> .
 ```
+
+The docker image with preinstalled wheel is available on dockerhub for testing. A CI will be added to create the wheel files and update the images.
+
+```
+docker pull f14kym0n573r/phylanx-wheel-dev:beta
+```
 ### Building of Wheel
 
 Tools used:
@@ -175,17 +181,11 @@ backtrace
 ### Testing
 
 The testfiles are in *testing/python* folder.
-As of now 93/102 tests pass.
+As of now wheel passes all the tests that the build system passes.
  
 Failing Tests in test-suite
 ````
-805_lazy_variable.py
-866_dynamic_dtype.py
-886_notnone.py
-912_zip.py
-962_broadcast_logical_operations.py
-exception_swallowed_369.py
-parallel.py
 test_nodes.py
 test_symbol_table.py
 ````
+The reason for failing the tests is the misspelled name of package in the test.
