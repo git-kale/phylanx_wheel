@@ -12,7 +12,7 @@ on:
         default: 'Phylanx'
 
 jobs:
-  ubuntu_wheel:
+  wheel-cp37m:
 
     runs-on: ubuntu-latest
     container: stellargroup/phylanx_base:prerequisites
@@ -33,6 +33,37 @@ jobs:
       run: ./CI/add_libraries.sh
     - name: Patch moved libraries
       run: ./CI/patch_libs.sh
+    - name: Repacking wheel
+      run: ./CI/wheel_repack.sh
+    - name: Push to Docker Hub
+      uses: docker/build-push-action@v1
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+        repository: f14kym0n573r/phylanx-wheel-dev
+        tag_with_ref: true
+
+  wheel-cp38:
+
+    runs-on: ubuntu-latest
+    container: stellargroup/phylanx_base:prerequisites
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: list directory
+      run: ls -la
+    - name: setup_deps
+      run: ./CI/build_deps.sh
+    - name: wheel creation from build
+      run: ./CI/wheel_creation.sh
+    - name: patchelf installation
+      run: ./CI/custom_patchelf.sh
+    - name: wheel directory
+      run: ./CI/wheel_skeleton_38.sh
+    - name: Add libraries to wheel
+      run: ./CI/add_libraries.sh
+    - name: Patch moved libraries
+      run: ./CI/patch_libs_38.sh
     - name: Repacking wheel
       run: ./CI/wheel_repack.sh
     - name: Push to Docker Hub
